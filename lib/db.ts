@@ -1,8 +1,12 @@
-import { sql } from "@vercel/postgres";
+import { neon } from "@neondatabase/serverless";
 
-export { sql };
+export function getDb() {
+  return neon(process.env.POSTGRES_URL!);
+}
 
 export async function initDb() {
+  const sql = getDb();
+
   await sql`
     CREATE TABLE IF NOT EXISTS users (
       id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sql } from "@vercel/postgres";
+import { getDb } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 export async function POST(request: Request) {
@@ -13,8 +13,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // 既存ユーザーチェック
-    const { rows: existing } = await sql`
+    const sql = getDb();
+
+    const existing = await sql`
       SELECT id FROM users WHERE email = ${email}
     `;
     if (existing.length > 0) {
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const { rows } = await sql`
+    const rows = await sql`
       INSERT INTO users (email, password_hash)
       VALUES (${email}, ${passwordHash})
       RETURNING id, email

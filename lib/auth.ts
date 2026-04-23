@@ -1,6 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { sql } from "@vercel/postgres";
+import { getDb } from "./db";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
@@ -14,7 +14,8 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const { rows } = await sql`
+        const sql = getDb();
+        const rows = await sql`
           SELECT id, email, password_hash FROM users WHERE email = ${credentials.email}
         `;
 
