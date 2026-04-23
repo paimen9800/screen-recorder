@@ -4,8 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { formatDuration, formatRelativeTime } from "@/lib/format";
-import { createClient } from "@/lib/supabase-client";
-import { SUPABASE_STORAGE_BUCKET } from "@/lib/constants";
 import { ShareDialog } from "./ShareDialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,40 +26,23 @@ export function VideoCard({ recording, onDelete }: VideoCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const supabase = createClient();
-
-  const { data: videoUrlData } = supabase.storage
-    .from(SUPABASE_STORAGE_BUCKET)
-    .getPublicUrl(recording.storage_path);
-
-  const thumbnailUrl = recording.thumbnail_path
-    ? supabase.storage
-        .from(SUPABASE_STORAGE_BUCKET)
-        .getPublicUrl(recording.thumbnail_path).data.publicUrl
-    : null;
-
   const handleDelete = async () => {
     if (!confirm("この録画を削除しますか？")) return;
     setDeleting(true);
 
-    // Storage から削除
-    await supabase.storage
-      .from(SUPABASE_STORAGE_BUCKET)
-      .remove([recording.storage_path]);
-    if (recording.thumbnail_path) {
-      await supabase.storage
-        .from(SUPABASE_STORAGE_BUCKET)
-        .remove([recording.thumbnail_path]);
-    }
+    const res = await fetch(`/api/videos/${recording.id}`, {
+      method: "DELETE",
+    });
 
-    // DB から削除
-    await supabase.from("recordings").delete().eq("id", recording.id);
-    onDelete(recording.id);
+    if (res.ok) {
+      onDelete(recording.id);
+    }
+    setDeleting(false);
   };
 
   const handleDownload = () => {
     const a = document.createElement("a");
-    a.href = videoUrlData.publicUrl;
+    a.href = recording.video_url;
     a.download = `${recording.title}.webm`;
     a.click();
   };
@@ -72,12 +53,13 @@ export function VideoCard({ recording, onDelete }: VideoCardProps) {
         {/* サムネイル */}
         <Link href={`/watch/${recording.id}`}>
           <div className="relative aspect-video bg-gray-800">
-            {thumbnailUrl ? (
+            {recording.thumbnail_url ? (
               <Image
-                src={thumbnailUrl}
+                src={recording.thumbnail_url}
                 alt={recording.title}
                 fill
                 className="object-cover"
+                unoptimized
               />
             ) : (
               <div className="flex h-full items-center justify-center">
@@ -85,21 +67,18 @@ export function VideoCard({ recording, onDelete }: VideoCardProps) {
               </div>
             )}
 
-            {/* 再生時間バッジ */}
             {recording.duration_seconds && (
               <div className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white font-mono">
                 {formatDuration(recording.duration_seconds)}
               </div>
             )}
 
-            {/* ホバーオーバーレイ */}
             <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors">
               <Play className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="white" />
             </div>
           </div>
         </Link>
 
-        {/* 情報 */}
         <div className="p-3 space-y-1.5">
           <Link href={`/watch/${recording.id}`}>
             <h3 className="text-sm font-medium text-white truncate hover:text-blue-400 transition-colors">
@@ -115,7 +94,6 @@ export function VideoCard({ recording, onDelete }: VideoCardProps) {
           </div>
         </div>
 
-        {/* アクションメニュー */}
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <div className="relative">
             <Button
@@ -135,30 +113,21 @@ export function VideoCard({ recording, onDelete }: VideoCardProps) {
                 />
                 <div className="absolute right-0 top-full mt-1 z-20 w-40 rounded-lg border border-gray-700 bg-gray-800 py-1 shadow-xl">
                   <button
-                    onClick={() => {
-                      setShareOpen(true);
-                      setMenuOpen(false);
-                    }}
+                    onClick={() => { setShareOpen(true); setMenuOpen(false); }}
                     className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-700"
                   >
                     <Share2 className="h-4 w-4" />
                     共有
                   </button>
                   <button
-                    onClick={() => {
-                      handleDownload();
-                      setMenuOpen(false);
-                    }}
+                    onClick={() => { handleDownload(); setMenuOpen(false); }}
                     className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-700"
                   >
                     <Download className="h-4 w-4" />
                     ダウンロード
                   </button>
                   <button
-                    onClick={() => {
-                      handleDelete();
-                      setMenuOpen(false);
-                    }}
+                    onClick={() => { handleDelete(); setMenuOpen(false); }}
                     disabled={deleting}
                     className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-gray-700"
                   >
@@ -176,7 +145,7 @@ export function VideoCard({ recording, onDelete }: VideoCardProps) {
         open={shareOpen}
         onOpenChange={setShareOpen}
         videoId={recording.id}
-        videoUrl={videoUrlData.publicUrl}
+        videoUrl={recording.video_url}
         title={recording.title}
       />
     </>

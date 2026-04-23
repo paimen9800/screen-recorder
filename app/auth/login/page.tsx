@@ -2,8 +2,8 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase-client";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
 import { Monitor, Loader2 } from "lucide-react";
@@ -15,26 +15,26 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/";
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
+    const result = await signIn("credentials", {
       email,
       password,
+      redirect: false,
     });
 
-    if (error) {
-      setError(error.message);
+    if (result?.error) {
+      setError("メールアドレスまたはパスワードが正しくありません");
       setLoading(false);
       return;
     }
 
-    router.push(redirect);
+    router.push(callbackUrl);
     router.refresh();
   }
 

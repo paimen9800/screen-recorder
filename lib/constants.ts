@@ -16,5 +16,3 @@ export const CODEC_CANDIDATES = [
   "video/webm;codecs=vp8",
   "video/webm",
 ] as const;
-
-export const SUPABASE_STORAGE_BUCKET = "recordings";

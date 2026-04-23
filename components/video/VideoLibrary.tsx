@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase-client";
 import { VideoCard } from "./VideoCard";
 import { Video, Loader2 } from "lucide-react";
 import type { Recording } from "@/types/database";
@@ -12,14 +11,10 @@ export function VideoLibrary() {
 
   useEffect(() => {
     async function fetchRecordings() {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("recordings")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (data) {
-        setRecordings(data as Recording[]);
+      const res = await fetch("/api/videos");
+      if (res.ok) {
+        const data = await res.json();
+        setRecordings(data.recordings);
       }
       setLoading(false);
     }

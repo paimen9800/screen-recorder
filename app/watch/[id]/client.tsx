@@ -7,16 +7,18 @@ import { ShareDialog } from "@/components/video/ShareDialog";
 import { Button } from "@/components/ui/button";
 import { formatDuration, formatRelativeTime } from "@/lib/format";
 import { APP_NAME } from "@/lib/constants";
-import {
-  Download,
-  Share2,
-  Eye,
-  Monitor,
-} from "lucide-react";
-import type { Recording } from "@/types/database";
+import { Download, Share2, Eye, Monitor } from "lucide-react";
 
 interface WatchPageClientProps {
-  recording: Recording;
+  recording: {
+    id: string;
+    title: string;
+    duration_seconds: number | null;
+    view_count: number;
+    created_at: string;
+    video_url: string;
+    thumbnail_url: string | null;
+  };
   videoUrl: string;
   thumbnailUrl: string | null;
 }
@@ -37,7 +39,6 @@ export function WatchPageClient({
 
   return (
     <div className="min-h-screen bg-gray-950">
-      {/* ヘッダー */}
       <header className="border-b border-gray-800">
         <div className="mx-auto max-w-5xl flex items-center justify-between px-4 py-3">
           <Link
@@ -51,13 +52,8 @@ export function WatchPageClient({
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-8">
-        {/* 動画プレイヤー */}
-        <VideoPlayer
-          src={videoUrl}
-          poster={thumbnailUrl || undefined}
-        />
+        <VideoPlayer src={videoUrl} poster={thumbnailUrl || undefined} />
 
-        {/* 動画情報 */}
         <div className="mt-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">

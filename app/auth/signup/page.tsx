@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase-client";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
 import { Monitor } from "lucide-react";
@@ -11,49 +12,43 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
     });
 
-    if (error) {
-      setError(error.message);
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.error || "登録に失敗しました");
       setLoading(false);
       return;
     }
 
-    setSuccess(true);
-    setLoading(false);
-  }
+    // 登録成功 → 自動ログイン
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
 
-  if (success) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="w-full max-w-sm space-y-4 px-4 text-center">
-          <h2 className="text-xl font-bold">確認メールを送信しました</h2>
-          <p className="text-muted-foreground">
-            {email} に確認メールを送りました。メール内のリンクをクリックしてアカウントを有効にしてください。
-          </p>
-          <Link href="/auth/login">
-            <Button variant="outline" className="mt-4">
-              ログインページへ
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
+    if (result?.error) {
+      setError("登録は成功しましたが、ログインに失敗しました");
+      setLoading(false);
+      return;
+    }
+
+    router.push("/");
+    router.refresh();
   }
 
   return (

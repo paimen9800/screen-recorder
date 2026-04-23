@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { createClient } from "@/lib/supabase-client";
-import { SUPABASE_STORAGE_BUCKET } from "@/lib/constants";
 
 interface UploadOptions {
   title: string;
@@ -20,7 +18,7 @@ export function useVideoUpload() {
         const video = document.createElement("video");
         video.src = URL.createObjectURL(blob);
         video.muted = true;
-        video.currentTime = 1; // 1秒目のフレーム
+        video.currentTime = 1;
 
         video.onseeked = () => {
           const canvas = document.createElement("canvas");
@@ -59,64 +57,59 @@ export function useVideoUpload() {
       setError(null);
 
       try {
-        const supabase = createClient();
-
-        // ユーザー情報を取得
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error("ログインが必要です");
-        }
-
-        const videoId = crypto.randomUUID();
-        const storagePath = `${user.id}/${videoId}.webm`;
-
-        // 動画をアップロード
+        // 1. 動画をアップロード
         setProgress(10);
-        const { error: uploadError } = await supabase.storage
-          .from(SUPABASE_STORAGE_BUCKET)
-          .upload(storagePath, blob, {
-            contentType: "video/webm",
-            upsert: false,
-          });
+        const videoFormData = new FormData();
+        videoFormData.append("file", blob, "recording.webm");
+        videoFormData.append("type", "video");
 
-        if (uploadError) throw uploadError;
+        const videoRes = await fetch("/api/upload", {
+          method: "POST",
+          body: videoFormData,
+        });
+
+        if (!videoRes.ok) throw new Error("動画のアップロードに失敗しました");
+        const { url: videoUrl } = await videoRes.json();
         setProgress(70);
 
-        // サムネイルを生成してアップロード
-        let thumbnailPath: string | null = null;
+        // 2. サムネイルを生成してアップロード
+        let thumbnailUrl: string | null = null;
         const thumbnail = await generateThumbnail(blob);
         if (thumbnail) {
-          const thumbPath = `${user.id}/${videoId}-thumb.png`;
-          const { error: thumbError } = await supabase.storage
-            .from(SUPABASE_STORAGE_BUCKET)
-            .upload(thumbPath, thumbnail, {
-              contentType: "image/png",
-              upsert: false,
-            });
-          if (!thumbError) {
-            thumbnailPath = thumbPath;
+          const thumbFormData = new FormData();
+          thumbFormData.append("file", thumbnail, "thumbnail.png");
+          thumbFormData.append("type", "thumbnail");
+
+          const thumbRes = await fetch("/api/upload", {
+            method: "POST",
+            body: thumbFormData,
+          });
+
+          if (thumbRes.ok) {
+            const thumbData = await thumbRes.json();
+            thumbnailUrl = thumbData.url;
           }
         }
         setProgress(85);
 
-        // DB にメタデータを登録
-        const { error: dbError } = await supabase.from("recordings").insert({
-          id: videoId,
-          user_id: user.id,
-          title: options.title,
-          duration_seconds: options.durationSeconds,
-          file_size_bytes: blob.size,
-          storage_path: storagePath,
-          thumbnail_path: thumbnailPath,
-          is_public: true,
+        // 3. DB にメタデータを登録
+        const metaRes = await fetch("/api/videos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: options.title,
+            duration_seconds: options.durationSeconds,
+            file_size_bytes: blob.size,
+            video_url: videoUrl,
+            thumbnail_url: thumbnailUrl,
+          }),
         });
 
-        if (dbError) throw dbError;
+        if (!metaRes.ok) throw new Error("メタデータの保存に失敗しました");
+        const { recording } = await metaRes.json();
         setProgress(100);
 
-        return videoId;
+        return recording.id;
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "アップロードに失敗しました";

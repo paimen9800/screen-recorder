@@ -2,44 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase-client";
 import { VideoLibrary } from "@/components/video/VideoLibrary";
 import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
 import { Monitor, Plus, LogOut, Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<{ email?: string } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    async function checkAuth() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.push("/auth/login");
-        return;
-      }
-      setUser({ email: user.email });
-      setLoading(false);
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
     }
+  }, [status, router]);
 
-    checkAuth();
-  }, [router]);
-
-  const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/auth/login");
-    router.refresh();
-  };
-
-  if (loading) {
+  if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-950">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -47,9 +27,10 @@ export default function DashboardPage() {
     );
   }
 
+  if (!session) return null;
+
   return (
     <div className="min-h-screen bg-gray-950">
-      {/* ヘッダー */}
       <header className="border-b border-gray-800">
         <div className="mx-auto max-w-7xl flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2 text-white">
@@ -67,10 +48,10 @@ export default function DashboardPage() {
 
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-400 hidden sm:block">
-                {user?.email}
+                {session.user?.email}
               </span>
               <Button
-                onClick={handleLogout}
+                onClick={() => signOut({ callbackUrl: "/auth/login" })}
                 variant="ghost"
                 size="icon"
                 className="text-gray-400 hover:text-white hover:bg-gray-800"
@@ -83,7 +64,6 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* メインコンテンツ */}
       <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white">マイ録画</h1>
