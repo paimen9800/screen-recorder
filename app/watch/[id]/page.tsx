@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import { formatDuration } from "@/lib/format";
 import { APP_NAME } from "@/lib/constants";
 import { WatchPageClient } from "./client";
+import type { Recording } from "@/types/database";
 
 interface PageProps {
   params: { id: string };
@@ -22,7 +23,8 @@ async function getRecording(id: string) {
     UPDATE recordings SET view_count = view_count + 1 WHERE id = ${id}
   `;
 
-  return { ...rows[0], view_count: rows[0].view_count + 1 };
+  const r = rows[0] as unknown as Recording;
+  return { ...r, view_count: r.view_count + 1 };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
