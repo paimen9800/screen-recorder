@@ -1,7 +1,11 @@
 import { neon } from "@neondatabase/serverless";
 
 export function getDb() {
-  return neon(process.env.POSTGRES_URL!);
+  const url = process.env.POSTGRES_URL || process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL;
+  if (!url) {
+    throw new Error("データベース接続文字列が設定されていません (POSTGRES_URL or DATABASE_URL)");
+  }
+  return neon(url);
 }
 
 export async function initDb() {
