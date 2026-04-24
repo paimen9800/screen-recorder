@@ -50,7 +50,7 @@ export function useFFmpeg() {
         ]);
 
         const data = await ffmpeg.readFile("output.mp4");
-        const mp4Blob = new Blob([data], { type: "video/mp4" });
+        const mp4Blob = new Blob([data as Uint8Array], { type: "video/mp4" });
 
         // クリーンアップ
         await ffmpeg.deleteFile("input.webm");
