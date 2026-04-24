@@ -4,12 +4,13 @@ import { useRef, useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useScreenRecorder } from "@/hooks/useScreenRecorder";
 import { useVideoUpload } from "@/hooks/useVideoUpload";
+import { useFFmpeg } from "@/hooks/useFFmpeg";
 import { RecordingControls } from "@/components/recording/RecordingControls";
 import { WebcamOverlay } from "@/components/recording/WebcamOverlay";
 import { CountdownOverlay } from "@/components/recording/CountdownOverlay";
 import { Button } from "@/components/ui/button";
 import { formatDuration } from "@/lib/format";
-import { ArrowLeft, Download, Save, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, Save, Trash2, Loader2, FileVideo } from "lucide-react";
 import Link from "next/link";
 
 export default function RecordPage() {
@@ -37,6 +38,7 @@ export default function RecordPage() {
   } = useScreenRecorder();
 
   const { upload, uploading, progress } = useVideoUpload();
+  const { convertToMp4, converting, progress: convertProgress } = useFFmpeg();
 
   const previewUrl = useMemo(
     () => (recordedBlob ? URL.createObjectURL(recordedBlob) : null),
@@ -62,12 +64,24 @@ export default function RecordPage() {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownloadWebm = () => {
     if (!recordedBlob) return;
     const url = URL.createObjectURL(recordedBlob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `recording-${Date.now()}.webm`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadMp4 = async () => {
+    if (!recordedBlob) return;
+    const mp4Blob = await convertToMp4(recordedBlob);
+    if (!mp4Blob) return;
+    const url = URL.createObjectURL(mp4Blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `recording-${Date.now()}.mp4`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -217,12 +231,31 @@ export default function RecordPage() {
               </Button>
 
               <Button
-                onClick={handleDownload}
+                onClick={handleDownloadMp4}
+                disabled={converting}
                 variant="outline"
                 className="border-gray-600 text-gray-300 hover:bg-gray-800"
               >
+                {converting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    MP4変換中... {convertProgress}%
+                  </>
+                ) : (
+                  <>
+                    <FileVideo className="mr-2 h-4 w-4" />
+                    MP4でダウンロード
+                  </>
+                )}
+              </Button>
+
+              <Button
+                onClick={handleDownloadWebm}
+                variant="ghost"
+                className="text-gray-400 hover:text-gray-200"
+              >
                 <Download className="mr-2 h-4 w-4" />
-                ダウンロード
+                WebM
               </Button>
 
               <Button

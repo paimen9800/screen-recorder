@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@neondatabase/serverless": "^1.1.0",
     "@vercel/blob": "^2.3.3",
     "bcryptjs": "^3.0.3",

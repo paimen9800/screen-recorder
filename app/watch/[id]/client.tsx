@@ -5,9 +5,10 @@ import Link from "next/link";
 import { VideoPlayer } from "@/components/video/VideoPlayer";
 import { ShareDialog } from "@/components/video/ShareDialog";
 import { Button } from "@/components/ui/button";
+import { useFFmpeg } from "@/hooks/useFFmpeg";
 import { formatDuration, formatRelativeTime } from "@/lib/format";
 import { APP_NAME } from "@/lib/constants";
-import { Download, Share2, Eye, Monitor } from "lucide-react";
+import { Download, Share2, Eye, Monitor, FileVideo, Loader2 } from "lucide-react";
 
 interface WatchPageClientProps {
   recording: {
@@ -29,12 +30,20 @@ export function WatchPageClient({
   thumbnailUrl,
 }: WatchPageClientProps) {
   const [shareOpen, setShareOpen] = useState(false);
+  const { convertToMp4, converting, progress } = useFFmpeg();
 
-  const handleDownload = () => {
+  const handleDownloadMp4 = async () => {
+    // まず動画をfetchしてBlobにする
+    const res = await fetch(videoUrl);
+    const webmBlob = await res.blob();
+    const mp4Blob = await convertToMp4(webmBlob);
+    if (!mp4Blob) return;
+    const url = URL.createObjectURL(mp4Blob);
     const a = document.createElement("a");
-    a.href = videoUrl;
-    a.download = `${recording.title}.webm`;
+    a.href = url;
+    a.download = `${recording.title}.mp4`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -87,13 +96,23 @@ export function WatchPageClient({
                 共有
               </Button>
               <Button
-                onClick={handleDownload}
+                onClick={handleDownloadMp4}
+                disabled={converting}
                 variant="outline"
                 size="sm"
                 className="border-gray-700 text-gray-300 hover:bg-gray-800"
               >
-                <Download className="mr-2 h-4 w-4" />
-                ダウンロード
+                {converting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    MP4変換中... {progress}%
+                  </>
+                ) : (
+                  <>
+                    <FileVideo className="mr-2 h-4 w-4" />
+                    MP4ダウンロード
+                  </>
+                )}
               </Button>
             </div>
           </div>
