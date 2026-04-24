@@ -50,8 +50,8 @@ export function useFFmpeg() {
         ]);
 
         const data = await ffmpeg.readFile("output.mp4");
-        const uint8 = data as Uint8Array;
-        const mp4Blob = new Blob([uint8.buffer], { type: "video/mp4" });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mp4Blob = new Blob([(data as any).buffer || data], { type: "video/mp4" });
 
         // クリーンアップ
         await ffmpeg.deleteFile("input.webm");
