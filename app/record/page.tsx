@@ -72,6 +72,7 @@ export default function RecordPage() {
     URL.revokeObjectURL(url);
   };
 
+  const isActive = status === "countdown" || status === "recording" || status === "paused";
   const showPreview = status === "processing" && recordedBlob;
 
   return (
@@ -86,6 +87,13 @@ export default function RecordPage() {
           ダッシュボードに戻る
         </Link>
       </div>
+
+      {/* 常にDOMに存在するCanvas（非表示時は画面外） */}
+      <canvas
+        ref={canvasRef}
+        className="fixed -left-[9999px] -top-[9999px]"
+        aria-hidden="true"
+      />
 
       {/* メインエリア */}
       <div className="flex flex-1 flex-col items-center justify-center px-4">
@@ -129,17 +137,15 @@ export default function RecordPage() {
         {/* カウントダウン */}
         {status === "countdown" && <CountdownOverlay />}
 
-        {/* 録画中：Canvasプレビュー */}
+        {/* 録画中：プレビュー */}
         {(status === "recording" || status === "paused") && (
           <div className="flex flex-col items-center gap-6 w-full max-w-4xl">
             <div
               ref={previewContainerRef}
               className="relative w-full aspect-video rounded-xl overflow-hidden bg-black border border-gray-800"
             >
-              <canvas
-                ref={canvasRef}
-                className="w-full h-full object-contain"
-              />
+              {/* Canvasの映像をvideoで表示 */}
+              <CanvasPreview canvasRef={canvasRef} />
               <WebcamOverlay
                 stream={webcamStream}
                 enabled={webcamEnabled}
@@ -233,5 +239,34 @@ export default function RecordPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Canvasの合成映像をvideoタグでプレビュー表示するコンポーネント
+function CanvasPreview({ canvasRef }: { canvasRef: React.RefObject<HTMLCanvasElement> }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    if (!canvas || !video) return;
+
+    const stream = canvas.captureStream(30);
+    video.srcObject = stream;
+    video.play().catch(() => {});
+
+    return () => {
+      video.srcObject = null;
+    };
+  }, [canvasRef]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      muted
+      className="w-full h-full object-contain"
+    />
   );
 }
