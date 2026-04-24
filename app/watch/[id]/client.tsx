@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useFFmpeg } from "@/hooks/useFFmpeg";
 import { formatDuration, formatRelativeTime } from "@/lib/format";
 import { APP_NAME } from "@/lib/constants";
-import { Download, Share2, Eye, Monitor, FileVideo, Loader2 } from "lucide-react";
+import { Share2, Eye, Monitor, FileVideo, Loader2 } from "lucide-react";
 
 interface WatchPageClientProps {
   recording: {
