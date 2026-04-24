@@ -72,7 +72,6 @@ export default function RecordPage() {
     URL.revokeObjectURL(url);
   };
 
-  const isActive = status === "countdown" || status === "recording" || status === "paused";
   const showPreview = status === "processing" && recordedBlob;
 
   return (
