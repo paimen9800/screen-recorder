@@ -6,7 +6,7 @@ export const RECORDING = {
   CHUNK_INTERVAL_MS: 1000,
   COUNTDOWN_SECONDS: 3,
   WEBCAM_SIZE_PX: 180,
-  VIDEO_BITRATE: 5_000_000, // 5 Mbps
+  VIDEO_BITRATE: 2_500_000, // 2.5 Mbps (20分で約375MB)
 } as const;
 
 export const CODEC_CANDIDATES = [
