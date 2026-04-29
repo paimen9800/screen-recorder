@@ -37,7 +37,7 @@ export default function RecordPage() {
     canvasRef,
   } = useScreenRecorder();
 
-  const { upload, uploading, progress } = useVideoUpload();
+  const { upload, uploading, progress, error: uploadError } = useVideoUpload();
   const { convertToMp4, converting, progress: convertProgress } = useFFmpeg();
 
   const previewUrl = useMemo(
@@ -111,9 +111,9 @@ export default function RecordPage() {
       {/* メインエリア */}
       <div className="flex flex-1 flex-col items-center justify-center px-4">
         {/* エラー表示 */}
-        {error && (
+        {(error || uploadError) && (
           <div className="mb-4 rounded-lg bg-red-500/20 px-4 py-2 text-red-300">
-            {error}
+            {error || uploadError}
           </div>
         )}
 

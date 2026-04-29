@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { upload as blobUpload } from "@vercel/blob/client";
 
 interface UploadOptions {
   title: string;
@@ -50,6 +51,17 @@ export function useVideoUpload() {
     []
   );
 
+  const uploadFile = useCallback(
+    async (file: Blob, filename: string): Promise<string> => {
+      const result = await blobUpload(filename, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload",
+      });
+      return result.url;
+    },
+    []
+  );
+
   const upload = useCallback(
     async (blob: Blob, options: UploadOptions): Promise<string | null> => {
       setUploading(true);
@@ -57,37 +69,21 @@ export function useVideoUpload() {
       setError(null);
 
       try {
-        // 1. 動画をアップロード
+        // 1. 動画をVercel Blobに直接アップロード
         setProgress(10);
-        const videoFormData = new FormData();
-        videoFormData.append("file", blob, "recording.webm");
-        videoFormData.append("type", "video");
-
-        const videoRes = await fetch("/api/upload", {
-          method: "POST",
-          body: videoFormData,
-        });
-
-        if (!videoRes.ok) throw new Error("動画のアップロードに失敗しました");
-        const { url: videoUrl } = await videoRes.json();
+        const videoFilename = `videos/${Date.now()}-${crypto.randomUUID()}.webm`;
+        const videoUrl = await uploadFile(blob, videoFilename);
         setProgress(70);
 
         // 2. サムネイルを生成してアップロード
         let thumbnailUrl: string | null = null;
         const thumbnail = await generateThumbnail(blob);
         if (thumbnail) {
-          const thumbFormData = new FormData();
-          thumbFormData.append("file", thumbnail, "thumbnail.png");
-          thumbFormData.append("type", "thumbnail");
-
-          const thumbRes = await fetch("/api/upload", {
-            method: "POST",
-            body: thumbFormData,
-          });
-
-          if (thumbRes.ok) {
-            const thumbData = await thumbRes.json();
-            thumbnailUrl = thumbData.url;
+          try {
+            const thumbFilename = `thumbnails/${Date.now()}-${crypto.randomUUID()}.png`;
+            thumbnailUrl = await uploadFile(thumbnail, thumbFilename);
+          } catch {
+            // サムネイル失敗は無視
           }
         }
         setProgress(85);
@@ -105,7 +101,10 @@ export function useVideoUpload() {
           }),
         });
 
-        if (!metaRes.ok) throw new Error("メタデータの保存に失敗しました");
+        if (!metaRes.ok) {
+          const data = await metaRes.json();
+          throw new Error(data.error || "メタデータの保存に失敗しました");
+        }
         const { recording } = await metaRes.json();
         setProgress(100);
 
@@ -119,7 +118,7 @@ export function useVideoUpload() {
         setUploading(false);
       }
     },
-    [generateThumbnail]
+    [generateThumbnail, uploadFile]
   );
 
   return { upload, uploading, progress, error };

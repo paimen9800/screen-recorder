@@ -1,30 +1,35 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { put } from "@vercel/blob";
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 
+// クライアントアップロード用のトークン発行
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+  const body = (await request.json()) as HandleUploadBody;
+
+  try {
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async () => {
+        const session = await getServerSession(authOptions);
+        if (!session?.user) {
+          throw new Error("認証が必要です");
+        }
+
+        return {
+          allowedContentTypes: ["video/webm", "video/mp4", "image/png"],
+          maximumSizeInBytes: 500 * 1024 * 1024, // 500MB
+        };
+      },
+      onUploadCompleted: async () => {
+        // アップロード完了後の処理（必要なら）
+      },
+    });
+
+    return NextResponse.json(jsonResponse);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "アップロードに失敗しました";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
-
-  const formData = await request.formData();
-  const file = formData.get("file") as File | null;
-  const type = formData.get("type") as string || "video";
-
-  if (!file) {
-    return NextResponse.json({ error: "ファイルが必要です" }, { status: 400 });
-  }
-
-  const ext = type === "thumbnail" ? "png" : "webm";
-  const folder = type === "thumbnail" ? "thumbnails" : "videos";
-  const filename = `${folder}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
-
-  const blob = await put(filename, file, {
-    access: "public",
-    contentType: file.type,
-  });
-
-  return NextResponse.json({ url: blob.url });
 }
